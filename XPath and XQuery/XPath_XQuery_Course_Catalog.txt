@@ -1,0 +1,184 @@
+PART I
+
+1. Return all Title elements (of both departments and courses). 
+
+doc("courses.xml")//Title
+
+
+2. Return last names of all department chairs. 
+
+doc("courses.xml")/Course_Catalog/Department/Chair//Last_Name
+
+
+3. Return titles of courses with enrollment greater than 500. 
+
+doc("courses.xml")/Course_Catalog/Department/Course[@Enrollment > 500]/Title
+
+
+4. Return titles of departments that have some course that takes "CS106B" as a prerequisite. 
+
+doc("courses.xml")/Course_Catalog/Department[Course/Prerequisites/Prereq="CS106B"]/Title
+
+
+5. Return last names of all professors or lecturers who use a middle initial. Don't worry about eliminating duplicates. 
+
+doc("courses.xml")//Professor[Middle_Initial]/Last_Name | doc("courses.xml")//Lecturer[Middle_Initial]/Last_Name
+
+
+6. Return the count of courses that have a cross-listed course (i.e., that have "Cross-listed" in their description). 
+
+count(doc("courses.xml")//Course[contains(Description, "Cross-listed")])
+
+
+7. Return the average enrollment of all courses in the CS department. 
+
+avg(doc("courses.xml")//Department[@Code="CS"]/Course/@Enrollment)
+
+
+8. Return last names of instructors teaching at least one course that has "system" in its description and enrollment greater than 100.
+
+doc("courses.xml")//Course[contains(Description, "system") and @Enrollment > 100]/Instructors/*/Last_Name
+
+
+9. Return the title of the course with the largest enrollment. 
+
+doc("courses.xml")//Course[not (@Enrollment > following::*/data(@Enrollment)) and not (@Enrollment > preceding::*/data(@Enrollment))]/Title
+
+
+PART II
+
+1. Return the course number of the course that is cross-listed as "LING180". 
+
+for $c in doc("courses.xml")//Course
+where some $d in $c/Description satisfies contains($d, "LING180")
+return $c/data(@Number)
+
+
+2. Return course numbers of courses that have the same title as some other course. (Hint: You might want to use the "preceding" and "following" navigation axes for this query, which were not covered in the video or our demo script; they match any preceding or following node, not just siblings.) 
+
+for $c in doc('courses.xml')//Course
+where $c/data(Title) = $c/following::*/data(Title) or $c/data(Title) = $c/preceding::*/data(Title)
+return $c/data(@Number)
+
+
+3. Return course numbers of courses taught by an instructor with first name "Daphne" or "Julie". 
+
+for $c in doc('courses.xml')//Course
+where $c/Instructors/*/First_Name = "Daphne" or $c/Instructors/*/First_Name = "Julie"
+return $c/data(@Number)
+
+
+4. Return the number (count) of courses that have no lecturers as instructors. 
+
+let $courses := doc("courses.xml")//Course
+return count(
+	for $c in $courses
+	where count($c/Instructors/Lecturer) = 0
+	return $c
+)
+
+
+5. Return titles of courses taught by the chair of a department. For this question, you may assume that all professors have distinct last names. 
+
+for $c in doc("courses.xml")//Course
+where $c/Instructors/Professor/Last_Name = $c/parent::Department/Chair/Professor/Last_Name
+return $c/Title
+
+
+6. Return titles of courses that have both a lecturer and a professor as instructors. Return each title only once. 
+
+for $c in doc("courses.xml")//Course
+where count($c/Instructors/Professor) > 0 and count($c/Instructors/Lecturer) > 0
+return $c/Title
+
+
+7. Return titles of courses taught by a professor with the last name "Ng" but not by a professor with the last name "Thrun". 
+
+for $c in doc("courses.xml")//Course
+where count($c/Instructors/Professor[Last_Name = "Ng"]) > 0 and count($c/Instructors/Professor[Last_Name = "Thrun"]) = 0
+return $c/Title
+
+
+8. Return course numbers of courses that have a course taught by Eric Roberts as a prerequisite.
+doc("courses.xml")
+
+for $c in doc("courses.xml")//Course
+where $c/Prerequisites/Prereq = (
+	for $c in doc("courses.xml")//Course
+	where $c/Instructors/Professor/First_Name = "Eric" and $c/Instructors/Professor/Last_Name = "Roberts"
+	return $c/data(@Number)
+)
+return $c/data(@Number)
+
+
+9. Create a summary of CS classes: List all CS department courses in order of enrollment. For each course include only its Enrollment (as an attribute) and its Title (as a subelement). 
+
+<Summary>
+{
+	for $c in doc("courses.xml")//Course
+	where $c/parent::Department/@Code = "CS"
+	order by xs:int($c/@Enrollment)
+	return 	
+		<Course>
+			{ $c/@Enrollment }
+			{ $c/Title }
+		</Course>
+}
+</Summary>
+
+
+10. Return a "Professors" element that contains as subelements a listing of all professors in all departments, sorted by last name with each professor appearing once. The "Professor" subelements should have the same structure as in the original data. For this question, you may assume that all professors have distinct last names. Watch out -- the presence/absence of middle initials may require some special handling. (This problem is quite challenging; congratulations if you get it right.) 
+
+let $professors := doc('courses.xml')//Professor
+let $distinct_prof := $professors except (
+  for $p in $professors
+  where ($p/Last_Name = $p/following::*/Last_Name and $p/First_Name = $p/following::*/First_Name)
+  return $p
+)
+return 
+  <Professors>
+      {
+          for $p in $distinct_prof
+          order by $p/Last_Name
+          return $p
+      }
+  </Professors>
+
+
+11. Expanding on the previous question, create an inverted course listing: Return an "Inverted_Course_Catalog" element that contains as subelements professors together with the courses they teach, sorted by last name. You may still assume that all professors have distinct last names. The "Professor" subelements should have the same structure as in the original data, with an additional single "Courses" subelement under Professor, containing a further "Course" subelement for each course number taught by that professor. Professors who do not teach any courses should have no Courses subelement at all. (This problem is very challenging; extra congratulations if you get it right.) 
+
+let $professors := doc('courses.xml')//Professor
+let $distinct_prof := (
+      $professors except (
+        for $p in $professors
+          where ($p/Last_Name = $p/following::*/Last_Name and $p/First_Name = $p/following::*/First_Name)
+          return $p
+      )
+    )
+let $courses := $catalog//Course
+return 
+	<Inverted_Course_Catalog>
+  {
+    for $p in $distinct_prof
+      order by $p/Last_Name
+      return <Professor>
+      { $p/* }
+      {
+        if ($courses//Professor = $p) 
+        then (
+          <Courses> {
+            for $c in $courses
+              where $c//Professor = $p
+              return <Course> { $c/data(@Number) } </Course>
+          }
+          </Courses>
+        )
+        else (
+          for $c in $courses
+            where $c//Professor = $p
+            return <Course> { $c/data(@Number) } </Course>
+        )
+      }
+      </Professor>
+  }
+  </Inverted_Course_Catalog>

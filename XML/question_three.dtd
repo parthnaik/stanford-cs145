@@ -1,0 +1,12 @@
+3. In this question, you are to create a DTD for a small XML data set about world countries. This data is adapted from the Mondial 3.0 database as hosted by the University of Washington, and was originally compiled by the Georg-August University of Goettingen Institute for Informatics. Each country has a name, population, and area (in sq. km). Some countries also list languages (with percentages of the population that speaks each language) and/or cities (with names and populations).
+
+<!ELEMENT countries (country*)>
+<!ELEMENT country (language | city)*>
+<!ATTLIST country name CDATA #REQUIRED population CDATA #REQUIRED area CDATA #REQUIRED>
+
+<!ELEMENT language (#PCDATA)>
+<!ATTLIST language percentage CDATA #REQUIRED>
+<!ELEMENT city (name, population)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT population (#PCDATA)>
+
