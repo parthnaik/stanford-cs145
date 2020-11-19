@@ -1,1 +1,0 @@
-Stanford's Introduction to Databases Completed Exercises
